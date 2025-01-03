@@ -132,13 +132,19 @@ If Instr(LCase$(TEMP$),".bmp") Then
   CLS : Load image TEMP$
   Do : Loop While Inkey$=""
   PanelsReStart():SetPControl("ENA")
-  End Sub
+  Exit Sub
 EndIf
 If Instr(LCase$(TEMP$),".mod") Then
   Play modfile TEMP$
   Do : Loop While Inkey$=""
   Play Stop
-  End Sub
+  Exit Sub
+EndIf
+If Instr(LCase$(TEMP$),".wav") Then
+  Play wav TEMP$
+  Do : Loop While Inkey$=""
+  Play Stop
+  Exit Sub
 EndIf
 If Instr(LCase$(TEMP$),".mp3") Then
   On ERROR ignore
@@ -146,7 +152,7 @@ If Instr(LCase$(TEMP$),".mp3") Then
   W_ERROR_MSG()
   Do : Loop While Inkey$=""
   Play Stop
-  End Sub
+  Exit Sub
 EndIf
 'Execute Commands from MENU
 If Mid$(TEMP$,1,2)="> " Then
@@ -154,7 +160,7 @@ If Mid$(TEMP$,1,2)="> " Then
   CLS : Execute TEMP$
   Do : Loop While Inkey$=""
   PanelsReStart():SetPControl("ENA")
-  End Sub
+  Exit Sub
 EndIf
 'Run Programm from MENU
 If Mid$(TEMP$,1,2)="* " Then
