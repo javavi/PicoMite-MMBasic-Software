@@ -1,4 +1,4 @@
-'File Manager v.1.13 for PicoMiteVGA by JAVAVI (c)2024"
+'File Manager v.1.14 for PicoMiteVGA by JAVAVI (c)2025"
 'For start FM from flash memory enter this instructions
 '> FLASH SAVE 2
 '> Option F9 "FLASH RUN 2"+Chr$(13)
@@ -182,7 +182,7 @@ Select Case CTRL$
 Case "TAB"
   PSide$="R"
   SetPControl("DIS")
-3  SetPControl("ENA")
+  SetPControl("ENA")
 Case "UP"
   TILE 1,1+LPPos,c(15),c(0),38,1
   If LFLIndx>0 Then
@@ -317,9 +317,11 @@ Case "DIS"
 Case "ENA"
   If PSide$="L" Then
     Drive LDisk$
+    Chdir LDir$
     TILE  1,1+LPPos,c(0),c(15),38,1
   Else
     Drive RDisk$
+    Chdir RDir$
     TILE 41,1+RPPos,c(0),c(15),38,1
   EndIf
 End Select
@@ -372,10 +374,12 @@ Select Case CKey
 Case 145    'F1 L.Disk
   SetPControl("DIS")
   LDisk$=WDiskSelect(2,15)
+  LDir$="/"
   LPanelShow():SetPControl("ENA")
 Case 146    'F2 R.Disk
   SetPControl("DIS")
   RDisk$=WDiskSelect(42,15)
+  RDir$="/"
   RPanelShow():SetPControl("ENA")
 Case 147    'F3 L.Sort
   SetPControl("DIS")
@@ -809,7 +813,7 @@ End Sub
 Sub PrintHelp()
 Color c(15),c(1)
 OpenWindow("Help",10,6,59,20)
-Print @(96,96) "File Manager v.1.13 for PicoMiteVGA by JaVaVi(c)2024"
+Print @(96,96) "File Manager v.1.14 for PicoMiteVGA by JaVaVi(c)2025"
 Print @(96,132)"[Arrows],[PgUp],[PgDn],[Home],[End] Keys - Navigation."
 Print @(96,156)"[Tab] Key - Switches between left & right panels."
 Print @(96,180)"[F1]...[F9] Keys - Conrol Functions."
