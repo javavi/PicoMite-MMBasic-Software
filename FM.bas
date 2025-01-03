@@ -1,41 +1,45 @@
-'File Manager v.1.9 for PicoMiteVGA by JAVAVI (c)2024"
+'File Manager v.1.13 for PicoMiteVGA by JAVAVI (c)2024"
 'For start FM from flash memory enter this instructions
 '> FLASH SAVE 2
 '> Option F9 "FLASH RUN 2"+Chr$(13)
 Clear
 Option default integer
+MODE 1: Font 1: TILE Height 12
 '----------------------
+Const SStimeout=30000
 Const FW=MM.Info(FONTWIDTH): FH=MM.Info(FONTHEIGHT)
 Const CHR=MM.HRes\FW: CVR=MM.VRes\FH
 Const RMax=200
+Dim string PSide$="L"     LENGTH 1
+Dim string LSort$=">"     LENGTH 1
+Dim string RSort$=">"     LENGTH 1
 Dim string LDisk$="A:"    LENGTH 2
 Dim string RDisk$="A:"    LENGTH 2
 Dim string LDir$="/"      LENGTH 64
 Dim string RDir$="/"      LENGTH 64
-Dim string LSort$="->"    LENGTH 2
-Dim string RSort$="->"    LENGTH 2
 Dim string LFList$(RMax)  LENGTH 64
 Dim string RFList$(RMax)  LENGTH 64
-Dim string PSide$="L"     LENGTH 1
-
 Dim integer LFLS%(2),RFLS%(2) 'File List Struct (RQ,DQ,FQ)
 Dim integer LFLIndx,RFLIndx
 Dim integer LPPos,RPPos,LFLTop,RFLTop
 Dim integer CKey,Tick1s
-
 Dim integer c(15)=(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15)
 Colour Map c(),c()
+MENU_ITEMS:
+Data "> MEMORY"
+Data "> FLASH LIST"
+Data "> OPTION LIST"
+Data "> ? Time$"
+Data "> ? Date$"
+Data ""
 '============================
 BEGIN:
-MODE 1
-TILE height 12
 Timer =0
 SetTick 1000,ISR_Tick1s,1
+On ERROR SKIP 1
 If MM.Info(SDCARD)="Ready" Then RDisk$="B:"
+On ERROR CLEAR
 PanelsReStart()
-Play tone 1209,697,80:Pause 80 '161
-Play tone 1477,770,80:Pause 80
-Play tone 1209,697,80
 '----------------------
 Do
 CKey=Asc(Inkey$)
@@ -46,7 +50,6 @@ Case 9    'Tap
 Case 13   'Enter
   EnterControl()
 Case 27   'Escape
-  Play tone 1209,852,80:Pause 80:Play tone 1477,697,80:Pause 80 '73!
   CLS : End
 Case 42   'PrintScr
   Save image "PrScr"
@@ -66,7 +69,7 @@ Case 136  'PgUp
   SetPControl("PREV")
 Case 137  'PgDn
   SetPControl("NEXT")
-Case 139  'Alt
+Case 139,8'Alt or BS
   SetAltPControl()
 Case 145  'F1-Help
   SetPControl("DIS")
@@ -107,13 +110,13 @@ Case 152  'F8-Delete
 Case 153  'F9-Menu
   W_F9_MENU()
 Case Else
-  Print @(0,456)CKey;"  ";  'KEY CODE
+  'Print @(0,456)CKey;"  ";
 End Select
 Timer =0
 EndIf
 '----------------------
 If Tick1s Then PrintTime()
-If Timer>30000 Then
+If Timer>SStimeout Then
   SSMatrix()
   CLS :Timer =0
   PanelsReStore()
@@ -138,7 +141,9 @@ If Instr(LCase$(TEMP$),".mod") Then
   End Sub
 EndIf
 If Instr(LCase$(TEMP$),".mp3") Then
+  On ERROR ignore
   Play mp3 TEMP$
+  W_ERROR_MSG()
   Do : Loop While Inkey$=""
   Play Stop
   End Sub
@@ -396,8 +401,11 @@ Local N,P
   TEMP$=Str$(MM.Info(DISK SIZE)\1024)+"|":Print Space$(11-Len(TEMP$));TEMP$;
   TEMP$=Str$(MM.Info(FREE SPACE)\1024):Print Space$(10-Len(TEMP$));TEMP$;
   y=y+1
-If MM.Info(SDCARD)="Ready" Then
-  Drive "B:":Inc N
+On ERROR SKIP 1
+If MM.Info(SDCARD)="Ready" Then Inc N
+On ERROR CLEAR
+If N>1 Then
+  Drive "B:"
   Print @(x*8,y*12)" B: SD Card|";
   TEMP$=Str$(MM.Info(DISK SIZE)\1024)+"|":Print Space$(11-Len(TEMP$));TEMP$;
   TEMP$=Str$(MM.Info(FREE SPACE)\1024):Print Space$(10-Len(TEMP$));TEMP$;
@@ -424,40 +432,45 @@ End Function
 '----------------------
 Function SortSwitch$(SS$)
   Select Case SS$
-  Case "->"
-    SortSwitch$="<-"
-  Case "<-"
+  Case ">"
+    SortSwitch$="<"
+  Case "<"
     SortSwitch$="*"
   Case "*"
-    SortSwitch$="->"
+    SortSwitch$=">"
   End Select
-  'SortSwitch$=SS$
 End Function
-'----------------------
+'=======================
 Sub W_F2_ReNAME()
 Local string TEMP$
+  TEMP$=GetCurrName$(PSide$)
+  If Mid$(TEMP$,1,2)=".." Then End Sub
   Color c(15),c(1)
   OpenWindow("ReName:",4,14,71,7)
   Chdir GetCurrFullPath$(PSide$)
   Print @(48,192);GetCurrFullPath$(PSide$);
-  Print @(72,204);GetCurrName$(PSide$);
   Print @(48,216);"AS";
-  Color c(15),c(0)
-  Print @(64,240);Space$(64);
-  If Mid$(GetCurrName$(PSide$),1,1)="/" Then
-    Print @(64,240);: Input ">/",TEMP$
+  Print @(64,228);">";
+  Color c(15),c(0):Print @(72,204);Space$(64);
+  Print @(72,204);GetCurrName$(PSide$);
+  Color c(14),c(0):Print @(72,228);Space$(64);
+  Print @(72,228);
+  If Mid$(TEMP$,1,1)="/" Then
+    TEMP$=InputE$(TEMP$,64)
     If TEMP$<>"" Then
+      If Mid$(TEMP$,1,1)="/" Then TEMP$=Mid$(TEMP$,2,63)
       On ERROR ignore
       Rename Mid$(GetCurrName$(PSide$),2,63) As TEMP$
     EndIf
   Else
-    Print @(64,240);: Input ">",TEMP$
+    TEMP$=InputE$(TEMP$,64)
     If TEMP$<>"" Then
       On ERROR ignore
       Rename GetCurrName$(PSide$) As TEMP$
     EndIf
   EndIf
   W_ERROR_MSG()
+  Color c(15)
 End Sub
 '----------------------
 Sub W_F4_Edit()
@@ -467,9 +480,9 @@ Case "."
   Color c(15),c(1)
   OpenWindow("EDIT New File",4,14,71,6)
   Print @(48,192);GetCurrFullPath$(PSide$);
-  Color c(15),c(0)
-  Print @(56,216);Space$(65);
-  Print @(56,216);: Input ">",TEMP$
+  Print @(64,216);">"
+  Color c(14),c(0):Print @(72,216);Space$(64);
+  Print @(72,216);:TEMP$=InputE$("",64)
   Color c(15),c(0)
   If TEMP$<>"" Then Edit File TEMP$
 Case "/"
@@ -482,25 +495,23 @@ End Sub
 Sub W_F5_Copy()
 Local string TEMP$
   Color c(15),c(1)
-  OpenWindow("Copy:",4,14,71,10)
+  OpenWindow("Copy a file:",4,14,71,10)
   Chdir GetCurrFullPath$(PSide$)
   Print @(48,192);GetCurrFullPath$(PSide$);
-  Print @(72,204);GetCurrName$(PSide$);
   Print @(48,216);"to";
   Print @(48,240);GetCurrFullPath$(OpSide$());
-  Print @(72,252);GetCurrName$(PSide$);
-  Color c(15),c(0)
-  Print @(64,276);Space$(65);
-  Print @(64,276);: Input ">",TEMP$
+  Print @(64,252);">";
+  Color c(15),c(0):Print @(72,204);Space$(64);
+  Print @(72,204);GetCurrName$(PSide$);
+  Color c(14),c(0):Print @(72,252);Space$(64);
+  Print @(72,252);:TEMP$=InputE$(GetCurrName$(PSide$),64)
   Color c(15),c(0)
   If TEMP$<>"" Then
     TEMP$=GetCurrFullPath$(OpSide$())+TEMP$
-  Else
-    TEMP$=GetCurrFullPath$(OpSide$())+GetCurrName$(PSide$)
-  EndIf
   On ERROR ignore
   Copy GetCurrFullName$(PSide$) To TEMP$
   W_ERROR_MSG()
+  EndIf
 End Sub
 '----------------------
 Sub W_F6_MOVE()
@@ -508,14 +519,16 @@ Local string TEMP$
   Color c(15),c(1)
   OpenWindow("Move:",4,14,71,9)
   Print @(48,192);GetCurrFullPath$(PSide$);
-  Print @(72,204);GetCurrName$(PSide$);
   Print @(48,216);"to";
   Print @(48,240);GetCurrFullPath$(OpSide$());
-  Print @(72,252);GetCurrName$(PSide$);
+  Print @(64,252);">";
+  Color c(15),c(0):Print @(72,204);Space$(64);
+  Print @(72,204);GetCurrName$(PSide$);
+  Color c(14),c(0):Print @(72,252);Space$(64);
+  Print @(72,252);:TEMP$=InputE$(GetCurrName$(PSide$),64)
   Color c(15),c(0)
-  Do :CKey=Asc(Inkey$):Loop While CKey=0
-  If CKey=13 Then
-    TEMP$=GetCurrFullPath$(OpSide$())+GetCurrName$(PSide$)
+  If TEMP$<>"" Then
+    TEMP$=GetCurrFullPath$(OpSide$())+TEMP$
     On ERROR ignore
     Copy GetCurrFullName$(PSide$) To TEMP$
     If Not MM.Errno Then
@@ -528,34 +541,35 @@ End Sub
 Sub W_F7_MkDIR()
 Local string TEMP$
   Color c(15),c(1)
-  OpenWindow("MkDir:",4,14,71,6)
+  OpenWindow("Make a Directory:",4,14,71,6)
   TEMP$=GetCurrFullPath$(PSide$)
   Chdir TEMP$
   Print @(48,192);TEMP$
-  Color c(15),c(0)
-  Print @(56,216);Space$(65);
-  Print @(56,216);: Input ">/",TEMP$
+  Print @(64,216);">";
+  Color c(14),c(0):Print Space$(64);
+  Print @(72,216);: TEMP$=InputE$("",64)
   Color c(15),c(0)
   If TEMP$<>"" Then Mkdir TEMP$
 End Sub
 '----------------------
 Sub W_F8_DELETE()
   Color c(15),c(1)
-  OpenWindow("Delete:",4,14,71,5)
+  OpenWindow("Delete:",4,14,71,6)
   Chdir GetCurrFullPath$(PSide$)
   Print @(48,192);GetCurrFullPath$(PSide$);
-  Color c(8),c(0)
-  Print @(72,204);Space$(64);
-  Print @(72,204);GetCurrName$(PSide$);
-  Color c(15),c(0)
+  Print @(64,216);">";
+  Color c(14),c(0):Print @(72,216);Space$(64);
+  Print @(72,216);GetCurrName$(PSide$);
+  Color c(15)
   Do :CKey=Asc(Inkey$):Loop While CKey=0
   If CKey=13 Then
+    On ERROR ignore
     If Mid$(GetCurrName$(PSide$),1,1)="/" Then
-      On ERROR ignore
       Kill Mid$(GetCurrName$(PSide$),2,63)
       W_ERROR_MSG()
     Else
       Kill GetCurrName$(PSide$)
+      W_ERROR_MSG()
     EndIf
   EndIf
 End Sub
@@ -575,20 +589,19 @@ Sub W_F9_MENU()
 End Sub
 '----------------------
 Sub GetMenuList(ML$(),LS%())
+Local n
 ML$(0)=".."
-ML$(1)="> OPTION LIST"
-ML$(2)="> MEMORY"
-ML$(3)="> FLASH LIST"
-ML$(4)="> LIST COMMANDS"
-ML$(5)="> LIST FUNCTIONS"
-ML$(6)="> CPU RESTART"
-ML$(7)="> NEW"
-ML$(8)=""
-LS%(0)=8:LS%(1)=0:LS%(2)=0
+Restore MENU_ITEMS
+For n=1 To 32
+  Read ML$(n)
+  If ML$(n)="" Then Exit For
+Next
+LS%(0)=n-1
+LS%(1)=0:LS%(2)=0
 End Sub
 'Window ERROR MSG -----------
 Sub W_ERROR_MSG()
-Local integer x,l=Len(MM.ErrMsg$)
+Local integer x,l
 If MM.Errno Then
   Color c(15),c(8)
   l=Len(MM.ErrMsg$)+4: x=40-(l\2)
@@ -598,6 +611,7 @@ If MM.Errno Then
   Color c(15),c(0)
   On ERROR CLEAR
   Do : Loop While Inkey$=""
+  PanelsReStart()
 EndIf
 On ERROR ABORT
 End Sub
@@ -624,15 +638,17 @@ FList$(RQt+1)=""
 FLS%(0)=RQt
 FLS%(1)=DQt
 FLS%(2)=FQt
-If SSort$="->" Then Sort FList$(),,2,1,RQt
-If SSort$="<-" Then Sort FList$(),,3,1,RQt
+If RQt>0 Then
+  If SSort$=">" Then Sort FList$(),,2,1,RQt
+  If SSort$="<" Then Sort FList$(),,3,1,RQt
+EndIf
 End Sub
 '============================
-Function GetCurrFullName$(SIDE$) As string
+Function GetCurrFullPath$(SIDE$) As string
 If SIDE$="L" Then
-  GetCurrFullName$=GetCurrFullPath$(SIDE$)+LFList$(LFLIndx)
+  GetCurrFullPath$=LDisk$+LDir$
 Else
-  GetCurrFullName$=GetCurrFullPath$(SIDE$)+RFList$(RFLIndx)
+  GetCurrFullPath$=RDisk$+RDir$
 EndIf
 End Function
 '----------------------
@@ -644,24 +660,52 @@ Else
 EndIf
 End Function
 '----------------------
-Function GetCurrFullPath$(SIDE$) As string
+Function GetCurrFullName$(SIDE$) As string
 If SIDE$="L" Then
-  If Len(Ldir$)>1 Then
-    GetCurrFullPath$=LDisk$+LDir$+"/"
-  Else
-    GetCurrFullPath$=LDisk$+LDir$
-  EndIf
+  GetCurrFullName$=GetCurrFullPath$(SIDE$)+LFList$(LFLIndx)
 Else
-  If Len(Ldir$)>1 Then
-    GetCurrFullPath$=RDisk$+RDir$+"/"
-  Else
-    GetCurrFullPath$=RDisk$+RDir$
-  EndIf
+  GetCurrFullName$=GetCurrFullPath$(SIDE$)+RFList$(RFLIndx)
 EndIf
 End Function
 '----------------------
 Function OpSide$() As string
 If PSide$="L" Then OpSide$="R" Else OpSide$="L"
+End Function
+'INPUT+ESCape----------------------
+Function InputE$(inString$,size%)
+Local k$, DELflag%=0
+InputE$=Left$(inString$,size%)
+Print InputE$;
+If Len(InputE$)<size% Then Print "_";Chr$(8);
+Do
+  Do
+    If DELflag% Then Exit Do
+    k$=Inkey$
+  Loop While k$=""
+  Select Case Asc(k$)
+  Case 8  'BS
+    If Len(InputE$)>0 Then
+      If Len(InputE$)=size% Then
+        Print k$;"_";k$;
+      Else
+        Print " ";k$;k$;"_";k$;
+      EndIf
+      InputE$=Left$(InputE$,Len(InputE$)-1)
+    Else
+      DELflag%=0
+    EndIf
+  Case 13 'ENTER
+    Exit Do
+  Case 27 'ESC
+    InputE$=""
+    Exit Do
+  Case 32 To 126
+    If Len(InputE$)<size% Then Print k$;: InputE$=InputE$+k$
+    If Len(InputE$)<size% Then Print "_";Chr$(8);
+  Case 127'DEL
+    DELflag%=1:k$=Chr$(8)
+  End Select
+Loop
 End Function
 '============================
 'Panels Interface ReWrite
@@ -765,13 +809,15 @@ End Sub
 Sub PrintHelp()
 Color c(15),c(1)
 OpenWindow("Help",10,6,59,20)
-Print @(12*8,8*12) "File Manager v.1.9 for PicoMiteVGA by JAVAVI (c)2024"
-Print @(12*8,11*12)"[Arrows],[PgUp],[PgDn],[Home],[End] Keys - Navigation."
-Print @(12*8,13*12)"[Tab] Key - Switches between left & right panels."
-Print @(12*8,15*12)"[F1]...[F9] Keys - Conrol Functions."
-Print @(12*8,17*12)"[Alt]+[F1]...[F9] Keys - Alternate Conrol Functions."
-Print @(12*8,19*12)"[Enter] Key - Entering a folder, running a file."
-Print @(12*8,21*12)"[Esc] Key - Exit in MMBasic command prompt. "
+Print @(96,96) "File Manager v.1.13 for PicoMiteVGA by JaVaVi(c)2024"
+Print @(96,132)"[Arrows],[PgUp],[PgDn],[Home],[End] Keys - Navigation."
+Print @(96,156)"[Tab] Key - Switches between left & right panels."
+Print @(96,180)"[F1]...[F9] Keys - Conrol Functions."
+Print @(96,204)"[Alt]+[F1]...[F9] Keys - Alternate Conrol Functions."
+Print @(96,228)"[Enter] Key - Entering a folder, running a file."
+Print @(96,252)"[BS]&[Del] Keys - for editing lines in the input field."
+Print @(96,276)"[Esc] Key - Escape from input & Exit to command prompt."
+Color 0,c(14):Print @(520,84);"    ":Color 0,c(7):Print @(520,96);"    "
 Do :Loop Until Inkey$<>""
 Color c(15),c(0)
 End Sub
